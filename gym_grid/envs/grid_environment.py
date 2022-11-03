@@ -233,7 +233,7 @@ class GridEnv(gym.Env):
         self.lastaction = a
         return (int(s), r, term, trunc, {"prob": p})
 
-    def render(self, mode="rgb_array"):
+    def render(self, mode="human"):
         if mode == "ansi":
             return self.__render_text(self.desc.tolist())
         elif mode == "human":
@@ -281,10 +281,6 @@ class GridEnv(gym.Env):
         else:
             outfile.write("\n")
         outfile.write("\n".join("".join(line) for line in desc) + "\n")
-
-        # with open('render.rtf', 'w') as fd:
-        #     outfile.seek(0)
-        #     shutil.copyfileobj(outfile, fd)
 
         with closing(outfile):
             print(outfile.getvalue())
