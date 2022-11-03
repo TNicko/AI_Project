@@ -9,6 +9,8 @@ from gym_grid.grid import SimpleGrid, Wall, Goal, Start
 from gym.envs.toy_text.utils import categorical_sample
 from gym_grid.window import Window
 
+TILE_SIZE = 100
+
 MAPS = {
     "5x5": ["SEEEE", "EEEEE", "EEEEE", "EEEEE", "EEEGE"],
 }
@@ -55,7 +57,7 @@ class GridEnv(gym.Env):
         # Rendering
         self.window = None
         self.grid = self.__initialise_grid_from_desc(self.desc)
-        self.fps = 5
+        self.fps = 3
 
     @staticmethod
     def __initialise_desc(desc: list[str], map_name: str) -> np.ndarray:
@@ -249,7 +251,7 @@ class GridEnv(gym.Env):
         render it, we have to pass (y,x) to the grid.render method.
         """
         img = self.grid.render(
-            tile_size=32,
+            tile_size=TILE_SIZE,
             agent_pos=(self.s % self.ncol, self.s // self.ncol),
             agent_dir=0
         )
@@ -263,7 +265,7 @@ class GridEnv(gym.Env):
         Render the environment to an rgb array.
         """
         img = self.grid.render(
-            tile_size=32,
+            tile_size=TILE_SIZE,
             agent_pos=(self.s % self.ncol, self.s // self.ncol),
             agent_dir=0
         )

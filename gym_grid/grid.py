@@ -35,9 +35,8 @@ OBJECT_TO_IDX = {
     'unseen'        : 0,
     'empty'         : 1,
     'wall'          : 2,
-    'floor'         : 3,
-    'goal'          : 4,
-    'agent'         : 5,
+    'goal'          : 3,
+    'agent'         : 4,
 }
 
 IDX_TO_OBJECT = dict(zip(OBJECT_TO_IDX.values(), OBJECT_TO_IDX.keys()))
@@ -115,8 +114,6 @@ class WorldObj:
 
         if obj_type == 'wall':
             v = Wall(color)
-        elif obj_type == 'floor':
-            v = Floor(color)
         elif obj_type == 'goal':
             v = Goal()
         else:
@@ -147,22 +144,6 @@ class Start(WorldObj):
 
     def render(self, img):
         fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
-
-class Floor(WorldObj):
-    """
-    Colored floor tile the agent can walk over
-    """
-
-    def __init__(self, color='blue'):
-        super().__init__('floor', color)
-
-    def can_overlap(self):
-        return True
-
-    def render(self, img):
-        # Give the floor a pale color
-        color = COLORS[self.color] / 2
-        fill_coords(img, point_in_rect(0.031, 1, 0.031, 1), color)
 
 class Wall(WorldObj):
     def __init__(self, color='grey'):
@@ -298,7 +279,6 @@ class SimpleGrid:
         # Hash map lookup key for the cache
         key = (agent_dir, highlight, tile_size)
         key = obj.encode() + key if obj else key
-
         if key in cls.tile_cache:
             return cls.tile_cache[key]
 
@@ -315,8 +295,8 @@ class SimpleGrid:
             highlight_img(img)
 
         # Draw the grid lines (top and left edges)
-        fill_coords(img, point_in_rect(0, 0.031, 0, 1), (170, 170, 170))
-        fill_coords(img, point_in_rect(0, 1, 0, 0.031), (170, 170, 170))
+        fill_coords(img, point_in_rect(0, 0.01, 0, 1), COLORS['grey'])
+        fill_coords(img, point_in_rect(0, 1, 0, 0.01), COLORS['grey'])
 
         # Downsample the image to perform supersampling/anti-aliasing
         img = downsample(img, subdivs)
@@ -369,30 +349,29 @@ class SimpleGrid:
 
         return img
 
-    def encode(self, vis_mask=None):
-        """
-        Produce a compact numpy encoding of the grid
-        """
+    # def encode(self, vis_mask=None):
+    #     """
+    #     Produce a compact numpy encoding of the grid
+    #     """
 
-        if vis_mask is None:
-            vis_mask = np.ones((self.width, self.height), dtype=bool)
+    #     if vis_mask is None:
+    #         vis_mask = np.ones((self.width, self.height), dtype=bool)
 
-        array = np.zeros((self.width, self.height, 3), dtype='uint8')
+    #     array = np.zeros((self.width, self.height, 3), dtype='uint8')
+    #     for i in range(self.width):
+    #         for j in range(self.height):
+    #             if vis_mask[i, j]:
+    #                 v = self.get(i, j)
 
-        for i in range(self.width):
-            for j in range(self.height):
-                if vis_mask[i, j]:
-                    v = self.get(i, j)
+    #                 if v is None:
+    #                     array[i, j, 0] = OBJECT_TO_IDX['empty']
+    #                     array[i, j, 1] = 0
+    #                     array[i, j, 2] = 0
 
-                    if v is None:
-                        array[i, j, 0] = OBJECT_TO_IDX['empty']
-                        array[i, j, 1] = 0
-                        array[i, j, 2] = 0
+    #                 else:
+    #                     array[i, j, :] = v.encode()
 
-                    else:
-                        array[i, j, :] = v.encode()
-
-        return array
+    #     return array
 
     @staticmethod
     def decode(array):
