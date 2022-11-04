@@ -1,6 +1,7 @@
 import gym
 from gym import spaces, utils
 import numpy as np
+import json
 import shutil
 from io import StringIO
 from contextlib import closing
@@ -12,6 +13,7 @@ from gym_grid.window import Window
 TILE_SIZE = 100
 
 MAPS = {
+    "3x3": ["SEW", "EEE", "EEG"],
     "5x5": ["SEEEE", "EEEEE", "EEEEE", "EEEEE", "EEEGE"],
 }
 
@@ -35,6 +37,9 @@ class GridEnv(gym.Env):
         reward_map: dict[bytes, float]
             Custom reward map.
         """
+
+        # Tiles traversed by agent
+        self.agent_path= []
 
         self.desc = self.__initialise_desc(desc, map_name)
         self.nrow, self.ncol = self.desc.shape
@@ -231,6 +236,20 @@ class GridEnv(gym.Env):
         transitions = self.P[self.s][a]
         i = categorical_sample([t[0] for t in transitions], self.np_random)
         p, s, r, term, trunc = transitions[i]
+
+        # Record agent coords
+        if s not in self.agent_path:
+            self.agent_path.append((s % self.ncol, s // self.ncol))
+            
+            # Change reward for state that has already been recorded
+            for i, actions in enumerate(self.P.values()):
+                for j, action in enumerate(actions.values()):
+                    if action[0][1] == s:
+                        toList = list(self.P[i][j][0])
+                        toList[2] = -0.5
+                        toTuple = tuple(toList)
+                        self.P[i][j][0] = toTuple
+
         self.s = s
         self.lastaction = a
         return (int(s), r, term, trunc, {"prob": p})
@@ -252,6 +271,7 @@ class GridEnv(gym.Env):
         """
         img = self.grid.render(
             tile_size=TILE_SIZE,
+            agent_path=self.agent_path,
             agent_pos=(self.s % self.ncol, self.s // self.ncol),
             agent_dir=0
         )

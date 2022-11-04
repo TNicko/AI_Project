@@ -1,18 +1,20 @@
 import numpy as np
 from gym_grid.rendering import *
+import json
 
 # Size in pixels of a tile in the full-scale human view
-TILE_PIXELS = 32
+TILE_PIXELS = 1
 
 # Map of color names to RGB values
 COLORS = {
-    'red'   : np.array([255, 0, 0]),
-    'green' : np.array([0, 200, 0]),
-    'blue'  : np.array([0, 0, 255]),
-    'purple': np.array([112, 39, 195]),
-    'yellow': np.array([255, 205, 0]),
-    'grey'  : np.array([100, 100, 100]),
-    'black' : np.array([0, 0, 0])
+    'red'    : np.array([255, 0, 0]),
+    'green'  : np.array([0, 200, 0]),
+    'blue'   : np.array([0, 0, 255]),
+    'purple' : np.array([112, 39, 195]),
+    'yellow' : np.array([255, 205, 0]),
+    'yellow1': np.array([255, 240, 182]),
+    'grey'   : np.array([100, 100, 100]),
+    'black'  : np.array([0, 0, 0])
 }
 
 COLOR_NAMES = sorted(list(COLORS.keys()))
@@ -33,10 +35,11 @@ IDX_TO_COLOR = dict(zip(COLOR_TO_IDX.values(), COLOR_TO_IDX.keys()))
 # Map of object type to integers
 OBJECT_TO_IDX = {
     'unseen'        : 0,
-    'empty'         : 1,
+    'start'         : 1,
     'wall'          : 2,
-    'goal'          : 3,
-    'agent'         : 4,
+    'empty'         : 4,
+    'goal'          : 5,
+    'agent'         : 6,
 }
 
 IDX_TO_OBJECT = dict(zip(OBJECT_TO_IDX.values(), OBJECT_TO_IDX.keys()))
@@ -115,7 +118,9 @@ class WorldObj:
         if obj_type == 'wall':
             v = Wall(color)
         elif obj_type == 'goal':
-            v = Goal()
+            v = Goal(color)
+        elif obj_type == 'start':
+            v = Start(color)
         else:
             assert False, "unknown object type in decode '%s'" % obj_type
 
@@ -126,8 +131,8 @@ class WorldObj:
         raise NotImplementedError
 
 class Goal(WorldObj):
-    def __init__(self):
-        super().__init__('goal', 'green')
+    def __init__(self, color='green'):
+        super().__init__('goal', color)
 
     def can_overlap(self):
         return True
@@ -136,12 +141,22 @@ class Goal(WorldObj):
         fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
 
 class Start(WorldObj):
-    def __init__(self):
-        super().__init__('goal', 'red')
+    def __init__(self, color='red'):
+        super().__init__('start', color)
 
     def can_overlap(self):
         return True
 
+    def render(self, img):
+        fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
+
+class Seen(WorldObj):
+    def __init__(self, color='grey'):
+        super().__init__('seen', color)
+        
+    def can_overlap(self):
+        return True
+    
     def render(self, img):
         fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
 
@@ -267,6 +282,7 @@ class SimpleGrid:
     def render_tile(
         cls,
         obj,
+        tile_seen,
         agent_dir=None,
         highlight=False,
         tile_size=TILE_PIXELS,
@@ -275,10 +291,10 @@ class SimpleGrid:
         """
         Render a tile and cache the result
         """
-
         # Hash map lookup key for the cache
-        key = (agent_dir, highlight, tile_size)
+        key = (tile_seen, agent_dir, highlight, tile_size)
         key = obj.encode() + key if obj else key
+
         if key in cls.tile_cache:
             return cls.tile_cache[key]
 
@@ -286,6 +302,9 @@ class SimpleGrid:
 
         if obj != None:
             obj.render(img)
+
+        if tile_seen and obj == None:
+            fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS['yellow1'])
 
         if agent_dir is not None:
             fill_coords(img, point_in_circle(0.5, 0.5, 0.31), COLORS['yellow'])
@@ -309,6 +328,7 @@ class SimpleGrid:
     def render(
         self,
         tile_size,
+        agent_path=None,
         agent_pos=None,
         agent_dir=None,
         highlight_mask=None
@@ -333,9 +353,14 @@ class SimpleGrid:
             for i in range(0, self.width):
                 cell = self.get(i, j)
 
+                tile_seen = False
+                if (i, j) in agent_path:
+                    tile_seen = True
+
                 agent_here = np.array_equal(agent_pos, (i, j))
                 tile_img = SimpleGrid.render_tile(
                     cell,
+                    tile_seen=tile_seen,
                     agent_dir=agent_dir if agent_here else None,
                     highlight=highlight_mask[i, j],
                     tile_size=tile_size
@@ -373,62 +398,62 @@ class SimpleGrid:
 
     #     return array
 
-    @staticmethod
-    def decode(array):
-        """
-        Decode an array grid encoding back into a grid
-        """
+    # @staticmethod
+    # def decode(array):
+    #     """
+    #     Decode an array grid encoding back into a grid
+    #     """
 
-        width, height, channels = array.shape
-        assert channels == 3
+    #     width, height, channels = array.shape
+    #     assert channels == 3
 
-        vis_mask = np.ones(shape=(width, height), dtype=bool)
+    #     vis_mask = np.ones(shape=(width, height), dtype=bool)
 
-        grid = SimpleGrid(width, height)
-        for i in range(width):
-            for j in range(height):
-                type_idx, color_idx, state = array[i, j]
-                v = WorldObj.decode(type_idx, color_idx, state)
-                grid.set(i, j, v)
-                vis_mask[i, j] = (type_idx != OBJECT_TO_IDX['unseen'])
+    #     grid = SimpleGrid(width, height)
+    #     for i in range(width):
+    #         for j in range(height):
+    #             type_idx, color_idx, state = array[i, j]
+    #             v = WorldObj.decode(type_idx, color_idx, state)
+    #             grid.set(i, j, v)
+    #             vis_mask[i, j] = (type_idx != OBJECT_TO_IDX['unseen'])
 
-        return grid, vis_mask
+    #     return grid, vis_mask
 
-    def process_vis(grid, agent_pos):
-        mask = np.zeros(shape=(grid.width, grid.height), dtype=bool)
+    # def process_vis(grid, agent_pos):
+    #     mask = np.zeros(shape=(grid.width, grid.height), dtype=bool)
 
-        mask[agent_pos[0], agent_pos[1]] = True
+    #     mask[agent_pos[0], agent_pos[1]] = True
 
-        for j in reversed(range(0, grid.height)):
-            for i in range(0, grid.width-1):
-                if not mask[i, j]:
-                    continue
+    #     for j in reversed(range(0, grid.height)):
+    #         for i in range(0, grid.width-1):
+    #             if not mask[i, j]:
+    #                 continue
 
-                cell = grid.get(i, j)
-                if cell and not cell.see_behind():
-                    continue
+    #             cell = grid.get(i, j)
+    #             if cell and not cell.see_behind():
+    #                 continue
 
-                mask[i+1, j] = True
-                if j > 0:
-                    mask[i+1, j-1] = True
-                    mask[i, j-1] = True
+    #             mask[i+1, j] = True
+    #             if j > 0:
+    #                 mask[i+1, j-1] = True
+    #                 mask[i, j-1] = True
 
-            for i in reversed(range(1, grid.width)):
-                if not mask[i, j]:
-                    continue
+    #         for i in reversed(range(1, grid.width)):
+    #             if not mask[i, j]:
+    #                 continue
 
-                cell = grid.get(i, j)
-                if cell and not cell.see_behind():
-                    continue
+    #             cell = grid.get(i, j)
+    #             if cell and not cell.see_behind():
+    #                 continue
 
-                mask[i-1, j] = True
-                if j > 0:
-                    mask[i-1, j-1] = True
-                    mask[i, j-1] = True
+    #             mask[i-1, j] = True
+    #             if j > 0:
+    #                 mask[i-1, j-1] = True
+    #                 mask[i, j-1] = True
 
-        for j in range(0, grid.height):
-            for i in range(0, grid.width):
-                if not mask[i, j]:
-                    grid.set(i, j, None)
+    #     for j in range(0, grid.height):
+    #         for i in range(0, grid.width):
+    #             if not mask[i, j]:
+    #                 grid.set(i, j, None)
 
-        return mask
+    #     return mask

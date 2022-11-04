@@ -13,7 +13,7 @@ for _ in range(T):
     action = env.action_space.sample()
     env.render()
     observation, reward, term, trunc, info = env.step(action)
-    # print(observation, reward, term, info)
+    print(observation, reward, term, info)
     if term:
         observation = env.reset()
 
