@@ -6,7 +6,7 @@ import random
 import gym_grid
 import gym
 
-env = gym.make("Grid-v0", map_name="8x10")
+env = gym.make("Grid-v0", map_name="3x3")
 episodes = 10
 states = env.observation_space.n
 actions = env.action_space.n
@@ -47,6 +47,7 @@ for episode in range(episodes):
         if terminate == True:
             break
     print(f"Episode: {episode}, Steps: {count}, Reward: {total_reward}")
+    # print(Q)
     rList.append(total_reward)
 
 env.close()

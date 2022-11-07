@@ -13,7 +13,7 @@ import gym_grid.maps as maps
 
 TILE_SIZE = 100
 
-FPS = 1
+FPS = 20
 
 REWARD_MAP = {
         b'E': 0.0,
@@ -240,6 +240,7 @@ class GridEnv(gym.Env):
 
         if len(self.agent_path) == self.nS:
             term = True
+            r = 1
 
         # Record agent coords
         if s not in self.agent_path:
