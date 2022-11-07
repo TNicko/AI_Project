@@ -354,7 +354,7 @@ class SimpleGrid:
                 cell = self.get(i, j)
 
                 tile_seen = False
-                if (i, j) in agent_path:
+                if (i, j) in agent_path.values():
                     tile_seen = True
 
                 agent_here = np.array_equal(agent_pos, (i, j))

@@ -9,21 +9,17 @@ from typing import Optional
 from gym_grid.grid import SimpleGrid, Wall, Goal, Start
 from gym.envs.toy_text.utils import categorical_sample
 from gym_grid.window import Window
+import gym_grid.maps as maps
 
 TILE_SIZE = 100
 
-FPS = 5
-
-MAPS = {
-    "3x3": ["SEE", "EEE", "EEG"],
-    "5x5": ["SEEEE", "EEEEE", "EEEEE", "EEEEE", "EEEGE"],
-}
+FPS = 1
 
 REWARD_MAP = {
         b'E': 0.0,
-        b'S': 0.0,
+        b'S': -0.5,
         b'W': -1.0,
-        b'G': 1.0,
+        # b'G': 1.0,
     }
 
 class GridEnv(gym.Env):
@@ -41,7 +37,7 @@ class GridEnv(gym.Env):
         """
 
         # Tiles traversed by agent
-        self.agent_path= []
+        self.agent_path= {}
 
         self.desc = self.__initialise_desc(desc, map_name)
         self.nrow, self.ncol = self.desc.shape
@@ -75,7 +71,7 @@ class GridEnv(gym.Env):
         #     desc = generate_random_map()
             return np.asarray(desc, dtype="c")
         if desc is None and map_name is not None:
-            desc = MAPS[map_name]
+            desc = maps.MAPS[map_name]
             return np.asarray(desc, dtype="c")
 
     @staticmethod
@@ -214,7 +210,7 @@ class GridEnv(gym.Env):
         self, 
         *, 
         seed: Optional[int] = None, 
-        return_info: bool = True,
+        return_info: bool = False,
         options: Optional[dict] = None,
         ):
             super().reset(seed=seed)
@@ -242,9 +238,12 @@ class GridEnv(gym.Env):
         i = categorical_sample([t[0] for t in transitions], self.np_random)
         p, s, r, term, trunc = transitions[i]
 
+        if len(self.agent_path) == self.nS:
+            term = True
+
         # Record agent coords
         if s not in self.agent_path:
-            self.agent_path.append((s % self.ncol, s // self.ncol))
+            self.agent_path[s] = (s % self.ncol, s // self.ncol)
 
             # Change reward for state that has already been recorded
             for i, actions in enumerate(self.P.values()):
