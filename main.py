@@ -5,16 +5,21 @@ import random
 import gym_grid
 import gym
 
-env = gym.make("Grid-v0", map_name="5x5")
-observation = env.reset()
-T = 20
+env = gym.make("Grid-v0", map_name="3x3")
+episodes = 3
+for episode in range(episodes):
+    observation = env.reset()
+    terminate = False
+    count = 0
+    total_reward = 0
 
-for _ in range(T):
-    action = env.action_space.sample()
-    env.render()
-    observation, reward, term, trunc, info = env.step(action)
-    print(observation, reward, term, info)
-    if term:
-        observation = env.reset()
+    while not terminate:
+        action = env.action_space.sample()
+        env.render()
+        observation, reward, terminate, trunc, info = env.step(action)
+        count += 1
+        total_reward += reward
+        # print(observation, reward, term, info)
+    print(f"Episode: {episode}, Steps: {count}, Reward: {total_reward}")
 
 env.close()

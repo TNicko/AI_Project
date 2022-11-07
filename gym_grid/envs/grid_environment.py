@@ -12,8 +12,10 @@ from gym_grid.window import Window
 
 TILE_SIZE = 100
 
+FPS = 5
+
 MAPS = {
-    "3x3": ["SEW", "EEE", "EEG"],
+    "3x3": ["SEE", "EEE", "EEG"],
     "5x5": ["SEEEE", "EEEEE", "EEEEE", "EEEEE", "EEEGE"],
 }
 
@@ -62,7 +64,7 @@ class GridEnv(gym.Env):
         # Rendering
         self.window = None
         self.grid = self.__initialise_grid_from_desc(self.desc)
-        self.fps = 3
+        self.fps = FPS
 
     @staticmethod
     def __initialise_desc(desc: list[str], map_name: str) -> np.ndarray:
@@ -218,8 +220,11 @@ class GridEnv(gym.Env):
             super().reset(seed=seed)
             # sample initial state from the initial state distribution
             self.s = categorical_sample(self.initial_state_distrib, self.np_random)
+            
+            # Clear the previous agent_path
+            self.agent_path.clear()
+            
             # set the starting red tile on the grid to render
-
             if self.initial_state is not None:
                 self.grid.set(self.initial_state % self.ncol, self.initial_state // self.ncol, None)
             self.grid.set(self.s % self.ncol, self.s // self.ncol, Start())
@@ -240,7 +245,7 @@ class GridEnv(gym.Env):
         # Record agent coords
         if s not in self.agent_path:
             self.agent_path.append((s % self.ncol, s // self.ncol))
-            
+
             # Change reward for state that has already been recorded
             for i, actions in enumerate(self.P.values()):
                 for j, action in enumerate(actions.values()):
